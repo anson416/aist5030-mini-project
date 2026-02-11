@@ -4,6 +4,7 @@
 !utils/**
 !.gitignore
 !eval.py
+!finetune.py
 !LICENSE
 !README.md
 !requirements.txt

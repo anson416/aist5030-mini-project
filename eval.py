@@ -1,13 +1,11 @@
 import argparse
 import ast
 import os
-import random
 from statistics import mean
 
 os.environ["HF_ALLOW_CODE_EVAL"] = "1"
 
 import evaluate
-import numpy as np
 import torch
 from codebleu import calc_codebleu
 from datasets import load_dataset
@@ -15,6 +13,7 @@ from rich.table import Table
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
 from utils import console
+from utils.misc import seed_everything
 from utils.model import load_model_and_tokenizer
 from utils.progress import progress_bar
 
@@ -238,11 +237,5 @@ if __name__ == "__main__":
     )
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
-
-    # Seeding
-    if args.seed is not None:
-        random.seed(args.seed)
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-
+    seed_everything(args.seed)
     main(args)

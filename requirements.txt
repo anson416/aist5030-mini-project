@@ -2,8 +2,10 @@ accelerate
 codebleu
 datasets
 evaluate
+peft
 pydantic
 rich
 torch
 transformers
 tree_sitter_python==0.23.1
+trl
