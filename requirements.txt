@@ -2,6 +2,7 @@ accelerate
 codebleu
 datasets
 evaluate
+matplotlib
 peft
 pydantic
 rich
