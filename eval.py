@@ -11,10 +11,14 @@ import numpy as np
 import torch
 from codebleu import calc_codebleu
 from datasets import load_dataset
+from rich.table import Table
 from transformers import PreTrainedModel, PreTrainedTokenizer
 
+from utils import console
 from utils.model import load_model_and_tokenizer
 from utils.progress import progress_bar
+
+MbppResultType = dict[tuple[float, float], dict[str, float | dict[int, float]]]
 
 
 def eval_oasst(
@@ -58,7 +62,7 @@ def eval_oasst(
 
 def eval_mbpp(
     model: PreTrainedModel, tokenizer: PreTrainedTokenizer
-) -> dict[tuple[float, float], dict[str, float | dict[int, float]]]:
+) -> MbppResultType:
     TEMPERATURES = [0.1, 0.3, 0.5, 0.7, 0.9]
     TOP_PS = [0.1, 0.3, 0.5, 0.7, 0.9]
     K_VALUES = [1, 5, 10]
@@ -106,17 +110,21 @@ def eval_mbpp(
             codebleu=codebleu_results["codebleu"],
         )
 
-    dataset = load_dataset("mbpp", "sanitized", split="test")
+    dataset = load_dataset("mbpp", "sanitized", split="test[:100]")
     results = {}
     with progress_bar() as pbar:
-        task_id_1 = pbar.add_task("[bold]MBPP[/]", total=len(dataset))
+        task_id_1 = pbar.add_task(
+            "[bold]MBPP[/]",
+            total=len(dataset) * len(TEMPERATURES) * len(TOP_PS),
+        )
         task_id_2 = pbar.add_task("Temperature", total=len(TEMPERATURES))
         task_id_3 = pbar.add_task("Top-P", total=len(TOP_PS))
 
         for temperature in TEMPERATURES:
+            pbar.update(task_id_2, description=f"Temperature: {temperature}")
             pbar.reset(task_id_3)
             for top_p in TOP_PS:
-                pbar.reset(task_id_1)
+                pbar.update(task_id_3, description=f"Top-P: {top_p}")
 
                 all_predictions: list[list[str]] = []
                 first_predictions: list[str] = []
@@ -161,7 +169,7 @@ def eval_mbpp(
                     pass_k_references.append("\n".join(row["test_list"]))
 
                     # Update progress bar
-                    pbar.update(task_id_1, advance=1)
+                    pbar.advance(task_id_1)
 
                 # Calculate and store metrics for this (temperature, top_p) pair
                 results[(temperature, top_p)] = calculate_metrics(
@@ -172,9 +180,42 @@ def eval_mbpp(
                 )
 
                 # Update progress bar
-                pbar.update(task_id_3, advance=1)
-            pbar.update(task_id_2, advance=1)
+                pbar.advance(task_id_3)
+            pbar.advance(task_id_2)
     return results
+
+
+def print_mbpp_results_table(results: MbppResultType) -> None:
+    # Extract and sort unique temperature and top_p values
+    temperatures = sorted(set(temp for temp, _ in results.keys()))
+    top_ps = sorted(set(top_p for _, top_p in results.keys()))
+
+    # Create table
+    table = Table(title="MBPP Results")
+
+    # Add columns
+    table.add_column("Temperature", style="green")
+    for top_p in top_ps:
+        table.add_column(f"top_p={top_p}", style="magenta")
+
+    # Add rows
+    for temp in temperatures:
+        row = [f"{temp}"]
+        for top_p in top_ps:
+            metrics = results[(temp, top_p)]
+            syntax_rate: float = metrics["syntax_rate"]
+            pass_k: dict[int, float] = metrics["pass_k"]
+            codebleu: float = metrics["codebleu"]
+            cell = f"Syntax: {syntax_rate:.2f}\nPass@"
+            cell += "/".join(str(k) for k in sorted(pass_k.keys()))
+            cell += ": "
+            cell += "/".join(f"{pass_k[k]:.2f}" for k in sorted(pass_k.keys()))
+            cell += f"\nCodeBLEU: {codebleu:.2f}"
+            row.append(cell)
+        table.add_row(*row)
+
+    # Print table
+    console.print(table)
 
 
 def main(args: argparse.Namespace) -> None:
@@ -182,9 +223,9 @@ def main(args: argparse.Namespace) -> None:
         args.model_name_or_path, is_eval=True
     )
     oasst_perplexity = eval_oasst(model, tokenizer)
-    print(f"OASST Perplexity: {oasst_perplexity:.2f}\n")
     mbpp_results = eval_mbpp(model, tokenizer)
-    print(mbpp_results)
+    console.print(f"[bold]OASST Perplexity: {oasst_perplexity:.2f}[/]\n")
+    print_mbpp_results_table(mbpp_results)
 
 
 if __name__ == "__main__":
