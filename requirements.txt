@@ -1,0 +1,9 @@
+accelerate
+codebleu
+datasets
+evaluate
+pydantic
+rich
+torch
+transformers
+tree_sitter_python==0.23.1

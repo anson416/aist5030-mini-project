@@ -1,9 +1,12 @@
 # User-defined
 *
+!utils/
+!utils/**
 !.gitignore
+!eval.py
 !LICENSE
-!pyproject.toml
 !README.md
+!requirements.txt
 
 # System files
 .DS_Store
