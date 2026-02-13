@@ -62,9 +62,9 @@ def eval_oasst(
 def eval_mbpp(
     model: PreTrainedModel, tokenizer: PreTrainedTokenizer
 ) -> MbppResultType:
-    TEMPERATURES = [0.1, 0.3, 0.5, 0.7, 0.9]
-    TOP_PS = [0.1, 0.3, 0.5, 0.7, 0.9]
-    K_VALUES = [1, 5, 10]
+    TEMPERATURES = [0.1, 0.5, 0.9]
+    TOP_PS = [0.1, 0.5, 0.9]
+    K_VALUES = [1, 5]
 
     code_eval = evaluate.load("code_eval")
 
