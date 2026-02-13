@@ -127,7 +127,7 @@ OFT Block Size: {args.oft_block_size}
         packing=False,
         logging_steps=1,
         save_strategy="epoch",
-        save_total_limit=1,
+        save_total_limit=args.epochs,
     )
 
     # Create metrics callback
@@ -215,7 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("-lr", "--learning-rate", type=float, default=1e-3)
     parser.add_argument("-b", "--batch-size", type=int, default=4)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
-    parser.add_argument("--oft-block-size", type=int, default=32)
+    parser.add_argument("--oft-block-size", type=int, default=16)
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
     seed_everything(args.seed)
