@@ -209,7 +209,7 @@ if __name__ == "__main__":
         "-m",
         "--model-name-or-path",
         type=str,
-        default="HuggingFaceTB/SmolLM2-135M-Instruct",
+        default="HuggingFaceTB/SmolLM2-1.7B-Instruct",
     )
     parser.add_argument("-e", "--epochs", type=int, default=5)
     parser.add_argument("-lr", "--learning-rate", type=float, default=1e-3)
