@@ -211,8 +211,8 @@ if __name__ == "__main__":
         type=str,
         default="HuggingFaceTB/SmolLM2-1.7B-Instruct",
     )
-    parser.add_argument("-e", "--epochs", type=int, default=5)
-    parser.add_argument("-lr", "--learning-rate", type=float, default=1e-3)
+    parser.add_argument("-e", "--epochs", type=int, default=3)
+    parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4)
     parser.add_argument("-b", "--batch-size", type=int, default=4)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)
     parser.add_argument("--oft-block-size", type=int, default=16)
