@@ -112,6 +112,12 @@ def calculate_codegen_metrics(
 def eval_mbpp(
     model: PreTrainedModel, tokenizer: PreTrainedTokenizer
 ) -> CodeGenEvalType:
+    def extract_func_name(test_list: list[str]) -> str:
+        assert len(test_list) > 0
+        code = test_list[0]
+        assert code.startswith("assert ")
+        return code.split("assert ")[1].split("(")[0].strip()
+
     dataset = load_dataset("mbpp", "sanitized", split="test")
     results = {}
     with progress_bar() as pbar:
@@ -134,8 +140,14 @@ def eval_mbpp(
                 pass_k_references: list[str] = []
                 for row in dataset:
                     # Construct conversation and tokenize
+                    func_name = extract_func_name(row["test_list"])
                     inputs = tokenizer.apply_chat_template(
-                        [{"role": "user", "content": row["prompt"].strip()}],
+                        [
+                            {
+                                "role": "user",
+                                "content": f"{row['prompt'].strip()}\nFunction name: {func_name}",
+                            }
+                        ],
                         add_generation_prompt=True,
                         return_tensors="pt",
                     ).to(model.device)
@@ -244,8 +256,9 @@ def eval_humaneval(
                         )
                         if "assistant\n" in response:
                             response = response.split("assistant\n")[-1]
-                        combined = combine_code(response, row["prompt"])
-                        problem_candidates.append(combined)
+                        problem_candidates.append(
+                            combine_code(response, row["prompt"])
+                        )
 
                     # Store candidates and references
                     all_predictions.append(problem_candidates)
