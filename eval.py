@@ -127,16 +127,16 @@ def eval_mbpp(
 
     def get_prompt(prompt: str, code: str, test_list: list[str]) -> str:
         prompt = prompt.strip()
-        func_name = find_target_func(code)
-        assert func_name in test_list[0]
+        func = find_target_func(code)
+        assert func in test_list[0]
         for line in code.splitlines():
             line = line.strip()
-            if line.startswith("def ") and func_name in line:
+            if line.startswith("def ") and re.search(rf"{func}\s*\(", line):
                 assert line.endswith(":")
                 signature = line[4:-1]
                 return f"{prompt}\nPython function: {signature}"
         else:
-            raise ValueError(f"Could not find {func_name} in code")
+            raise ValueError(f"Could not find {func} in code")
 
     dataset = load_dataset("Muennighoff/mbpp", "sanitized", split="test")
     results = {}
