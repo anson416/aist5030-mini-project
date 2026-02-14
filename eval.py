@@ -112,11 +112,25 @@ def calculate_codegen_metrics(
 def eval_mbpp(
     model: PreTrainedModel, tokenizer: PreTrainedTokenizer
 ) -> CodeGenEvalType:
+    def find_target_func(code: str) -> str:
+        funcs: dict[str, int] = {}
+        for line in code.splitlines():
+            if line.startswith("def "):
+                func_name = line[4 : line.index("(")].strip()
+                funcs[func_name] = 0
+        assert len(funcs) > 0
+        for func in funcs.keys():
+            for line in code.splitlines():
+                if f"{func}(" in line:
+                    funcs[func] += 1
+            funcs[func] = code.count(func + "(")
+        sorted_funcs = sorted(funcs.items(), key=lambda item: item[1])
+        return sorted_funcs[0][0]
+
     def get_prompt(prompt: str, code: str, test_list: list[str]) -> str:
         prompt = prompt.strip()
-        test_case = test_list[0]
-        assert test_case.startswith("assert ")
-        func_name = test_case[7:].split("(")[0].strip()
+        func_name = find_target_func(code)
+        assert func_name in test_list[0]
         for line in code.splitlines():
             line = line.strip()
             if line.startswith("def ") and func_name in line:
