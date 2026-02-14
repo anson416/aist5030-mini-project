@@ -54,9 +54,10 @@ def formatting_func(
     example: dict[str, str], tokenizer: PreTrainedTokenizer
 ) -> str:
     user_content = example["instruction"].strip()
-    inp = example["input"].strip()
-    if len(inp) > 0:
-        user_content += f"\n\nInput:\n{inp}"
+    if "input" in example:
+        inp = example["input"].strip()
+        if len(inp) > 0:
+            user_content += f"\n\nInput:\n{inp}"
     messages = [
         {"role": "user", "content": user_content},
         {"role": "assistant", "content": example["output"].strip()},
