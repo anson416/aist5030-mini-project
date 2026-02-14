@@ -1,6 +1,7 @@
 import argparse
 import ast
 import os
+import re
 from statistics import mean
 
 os.environ["HF_ALLOW_CODE_EVAL"] = "1"
@@ -17,8 +18,8 @@ from utils.misc import seed_everything
 from utils.model import load_model_and_tokenizer
 from utils.progress import progress_bar
 
-TEMPERATURES = [0.1, 0.5, 0.9]
-TOP_PS = [0.1, 0.5, 0.9]
+TEMPERATURES = [0.2]
+TOP_PS = [0.95]
 K_VALUES = [1, 5, 10]
 
 CodeGenEvalType = dict[
@@ -120,7 +121,7 @@ def eval_mbpp(
                 funcs[func_name] = 0
         assert len(funcs) > 0
         for func in funcs.keys():
-            funcs[func] = code.count(f"{func}(")
+            funcs[func] = len(re.findall(rf"{func}\s*\(", code))
         sorted_funcs = sorted(funcs.items(), key=lambda item: item[1])
         return sorted_funcs[0][0]
 
@@ -137,7 +138,7 @@ def eval_mbpp(
         else:
             raise ValueError(f"Could not find {func_name} in code")
 
-    dataset = load_dataset("mbpp", "sanitized", split="test")
+    dataset = load_dataset("Muennighoff/mbpp", "sanitized", split="test")
     results = {}
     with progress_bar() as pbar:
         task_id_1 = pbar.add_task(
@@ -159,17 +160,16 @@ def eval_mbpp(
                 pass_k_references: list[str] = []
                 for row in dataset:
                     # Construct conversation and tokenize
+                    try:
+                        prompt = get_prompt(
+                            row["prompt"],
+                            row["code"],
+                            row["test_list"],
+                        )
+                    except AssertionError:
+                        continue
                     inputs = tokenizer.apply_chat_template(
-                        [
-                            {
-                                "role": "user",
-                                "content": get_prompt(
-                                    row["prompt"],
-                                    row["code"],
-                                    row["test_list"],
-                                ),
-                            }
-                        ],
+                        [{"role": "user", "content": prompt}],
                         add_generation_prompt=True,
                         return_tensors="pt",
                     ).to(model.device)
@@ -178,7 +178,7 @@ def eval_mbpp(
                     with torch.inference_mode():
                         outputs = model.generate(
                             **inputs,
-                            max_new_tokens=4096,
+                            max_new_tokens=1024,
                             do_sample=True,
                             temperature=temperature,
                             top_p=top_p,
@@ -263,7 +263,7 @@ def eval_humaneval(
                     with torch.inference_mode():
                         outputs = model.generate(
                             **inputs,
-                            max_new_tokens=4096,
+                            max_new_tokens=1024,
                             do_sample=True,
                             temperature=temperature,
                             top_p=top_p,
