@@ -371,7 +371,7 @@ if __name__ == "__main__":
         "-m",
         "--model-name-or-path",
         type=str,
-        default="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        default="HuggingFaceTB/SmolLM2-1.7B",
     )
     parser.add_argument("--seed", type=int, default=None)
     args = parser.parse_args()
