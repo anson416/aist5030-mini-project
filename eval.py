@@ -112,11 +112,19 @@ def calculate_codegen_metrics(
 def eval_mbpp(
     model: PreTrainedModel, tokenizer: PreTrainedTokenizer
 ) -> CodeGenEvalType:
-    def extract_func_name(test_list: list[str]) -> str:
-        assert len(test_list) > 0
-        code = test_list[0]
-        assert code.startswith("assert ")
-        return code.split("assert ")[1].split("(")[0].strip()
+    def get_prompt(prompt: str, code: str, test_list: list[str]) -> str:
+        prompt = prompt.strip()
+        test_case = test_list[0]
+        assert test_case.startswith("assert ")
+        func_name = test_case[7:].split("(")[0].strip()
+        for line in code.splitlines():
+            line = line.strip()
+            if line.startswith("def ") and func_name in line:
+                assert line.endswith(":")
+                signature = line[4:-1]
+                return f"{prompt}\nPython function: {signature}"
+        else:
+            raise ValueError(f"Could not find {func_name} in code")
 
     dataset = load_dataset("mbpp", "sanitized", split="test")
     results = {}
@@ -140,12 +148,15 @@ def eval_mbpp(
                 pass_k_references: list[str] = []
                 for row in dataset:
                     # Construct conversation and tokenize
-                    func_name = extract_func_name(row["test_list"])
                     inputs = tokenizer.apply_chat_template(
                         [
                             {
                                 "role": "user",
-                                "content": f"{row['prompt'].strip()}\nFunction name: {func_name}",
+                                "content": get_prompt(
+                                    row["prompt"],
+                                    row["code"],
+                                    row["test_list"],
+                                ),
                             }
                         ],
                         add_generation_prompt=True,
