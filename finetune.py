@@ -6,7 +6,7 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import torch
-from datasets import load_dataset
+from datasets import concatenate_datasets, load_dataset
 from peft import OFTConfig, get_peft_model
 from transformers import PreTrainedTokenizer, TrainerCallback, TrainerState
 from trl import SFTConfig, SFTTrainer
@@ -14,8 +14,6 @@ from trl import SFTConfig, SFTTrainer
 from utils import console
 from utils.misc import seed_everything
 from utils.model import load_model_and_tokenizer
-
-DATASET = "sahil2801/CodeAlpaca-20k"
 
 
 class MetricsCallback(TrainerCallback):
@@ -68,22 +66,33 @@ def formatting_func(
 
 
 def main(args: argparse.Namespace) -> None:
+    DATASET_1 = "sahil2801/CodeAlpaca-20k"
+    DATASET_2 = "ise-uiuc/Magicoder-OSS-Instruct-75K"
+
     effective_batch = args.batch_size * args.gradient_accumulation_steps
     console.print(f"""\
 Model: {args.model_name_or_path}
-Dataset: {DATASET}
+Dataset: {DATASET_1}, {DATASET_2}
 Epochs: {args.epochs}
 Learning Rate: {args.learning_rate}
 Batch Size: {args.batch_size} (effective: {effective_batch})
 OFT Block Size: {args.oft_block_size}
 """)
 
+    # Load and concatenate datasets
+    ds1 = load_dataset(DATASET_1, split="train")
+    ds2 = load_dataset(DATASET_2, split="train")
+    ds2 = ds2.rename_columns({"problem": "instruction", "solution": "output"})
+    if "input" not in ds2.column_names:
+        ds2 = ds2.add_column("input", ["" for _ in range(len(ds2))])
+    common_cols = ["instruction", "input", "output"]
+    ds1 = ds1.select_columns(common_cols)
+    ds2 = ds2.select_columns(common_cols)
+    train_dataset = concatenate_datasets([ds1, ds2])
+    train_dataset = train_dataset.shuffle(seed=args.seed)
+
     # Load model and tokenizer
     model, tokenizer = load_model_and_tokenizer(args.model_name_or_path)
-
-    # Ensure tokenizer has pad token for batch processing
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
 
     # Freeze base model parameters
     for param in model.parameters():
@@ -93,7 +102,7 @@ OFT Block Size: {args.oft_block_size}
     oft_config = OFTConfig(
         oft_block_size=args.oft_block_size,
         use_cayley_neumann=True,
-        module_dropout=0.05,
+        module_dropout=0.0,
         bias="oft_only",
         target_modules=[
             "q_proj",
@@ -138,7 +147,7 @@ OFT Block Size: {args.oft_block_size}
     trainer = SFTTrainer(
         model=model,
         args=training_args,
-        train_dataset=load_dataset(DATASET, split="train"),
+        train_dataset=train_dataset,
         formatting_func=lambda example: formatting_func(example, tokenizer),
         callbacks=[metrics_callback],
     )
@@ -212,7 +221,7 @@ if __name__ == "__main__":
         type=str,
         default="HuggingFaceTB/SmolLM2-1.7B",
     )
-    parser.add_argument("-e", "--epochs", type=int, default=3)
+    parser.add_argument("-e", "--epochs", type=int, default=1)
     parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4)
     parser.add_argument("-b", "--batch-size", type=int, default=4)
     parser.add_argument("--gradient-accumulation-steps", type=int, default=4)

@@ -120,10 +120,7 @@ def eval_mbpp(
                 funcs[func_name] = 0
         assert len(funcs) > 0
         for func in funcs.keys():
-            for line in code.splitlines():
-                if f"{func}(" in line:
-                    funcs[func] += 1
-            funcs[func] = code.count(func + "(")
+            funcs[func] = code.count(f"{func}(")
         sorted_funcs = sorted(funcs.items(), key=lambda item: item[1])
         return sorted_funcs[0][0]
 
@@ -186,6 +183,7 @@ def eval_mbpp(
                             temperature=temperature,
                             top_p=top_p,
                             num_return_sequences=max(K_VALUES),
+                            eos_token_id=tokenizer.eos_token_id,
                             pad_token_id=tokenizer.eos_token_id,
                         )
 
@@ -270,6 +268,7 @@ def eval_humaneval(
                             temperature=temperature,
                             top_p=top_p,
                             num_return_sequences=max(K_VALUES),
+                            eos_token_id=tokenizer.eos_token_id,
                             pad_token_id=tokenizer.eos_token_id,
                         )
 
