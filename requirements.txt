@@ -1,6 +1,6 @@
 accelerate
 codebleu
-datasets==3.6.0
+datasets==5.0.1
 evaluate
 matplotlib
 peft
